@@ -5,12 +5,10 @@ delicious2google is a simple Python Google App Engine-based tool to export [Deli
 
 There is a running instance at [http://delicious-export.appspot.com/](http://delicious-export.appspot.com/).
 
-Code Organization
-=================
+### Code Organization
 
 The App Engine app lives in the `app` directory.
 
-OAuth Keys
-----------
+### OAuth Keys
 
 The OAuth application keys should live in a `oauthkeys.py` file inside of `app`. The file should define three variables, `CONSUMER_KEY`, `CONSUMER_SECRET` and `APPLICATION_ID`. If you'd like to run your own instance of the application, you can get your own values from the [Yahoo! APIs Dashboard](https://developer.apps.yahoo.com/dashboard/createKey.html).
