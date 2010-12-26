@@ -7,7 +7,12 @@ from google.appengine.api import urlfetch
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
 
+import oauthlib.oauth
+import yahoo.application
+import yahoo.oauth
+
 from bookmarks import parse_bookmarks_xml
+import oauthkeys
 
 class BaseHandler(webapp.RequestHandler):
     def _handle_error(self, url_fetch_result):
@@ -66,6 +71,38 @@ class BaseHandler(webapp.RequestHandler):
         
         out.write(')</script>')    
 
+class OAuthHandler(BaseHandler):
+    def _create_oauthapp(self):
+        return yahoo.application.OAuthApplication(
+            oauthkeys.CONSUMER_KEY,
+            oauthkeys.CONSUMER_SECRET,
+            oauthkeys.APPLICATION_ID,
+            'http://delicious-export.appspot.com/oauth-callback')
+
+    def _handle_xml_export(self, oauthapp):
+        url = 'http://api.del.icio.us/v2/posts/all'
+        signing_request = oauthlib.oauth.OAuthRequest.from_consumer_and_token(
+            oauthapp.consumer,
+            token=oauthapp.token,
+            http_method='GET',
+            http_url=url)
+        signing_request.sign_request(
+            oauthapp.signature_method_hmac_sha1, oauthapp.consumer, oauthapp.token)
+        headers = signing_request.to_header('yahooapis.com')
+    
+        result = urlfetch.fetch(
+            url=url,
+            method=urlfetch.GET,
+            deadline=60,
+            headers=headers)
+    
+        if result.status_code != 200:
+            self._handle_error(result)
+            return
+            
+        bookmarks = parse_bookmarks_xml(result.content)
+        self._output_export_form(bookmarks)
+
 class BasicAuthUploadHandler(BaseHandler):
     def post(self):
         username = self.request.get('username')
@@ -109,12 +146,21 @@ class BasicAuthUploadHandler(BaseHandler):
 
         self._output_export_form(bookmarks)
 
+class DebugTokenHandler(OAuthHandler):
+    def post(self):
+        oauthapp = self._create_oauthapp()
+        access_token = yahoo.oauth.AccessToken.from_string(
+            self.request.get('access-token'))
+        oauthapp.token = access_token
+        self._handle_xml_export(oauthapp)
+
 class FaviconHandler(webapp.RequestHandler):
     def get(self):
       self.redirect('http://persistent.info/favicon.ico')
 
 def main():
     application = webapp.WSGIApplication([
+            ('/debug-token', DebugTokenHandler),
             ('/basic-auth', BasicAuthUploadHandler),            
             ('/favicon.ico', FaviconHandler),
         ],
