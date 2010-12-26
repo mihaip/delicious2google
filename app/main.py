@@ -4,6 +4,7 @@ import logging
 
 from django.utils import simplejson as json
 from google.appengine.api import urlfetch
+from google.appengine.ext import db
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
 
@@ -14,6 +15,12 @@ import yahoo.oauth
 from bookmarks import parse_bookmarks_xml
 import oauthkeys
 
+CALLBACK_URL = 'http://delicious-export.appspot.com/oauth-callback'
+
+class StoredToken(db.Model):
+    token_key = db.StringProperty(required=True)
+    token = db.StringProperty(required=True)
+
 class BaseHandler(webapp.RequestHandler):
     def _handle_error(self, url_fetch_result):
         def debug(str):
@@ -21,7 +28,7 @@ class BaseHandler(webapp.RequestHandler):
             logging.debug(str)
       
         self.response.set_status(500)
-        self.response.headers["Content-Type"] = "text/html"
+        self.response.headers['Content-Type'] = 'text/html'
       
         debug('<h1>Received an error from the Delicious API</h1>')
         debug('<b>Status code:</b> %d<br>' %
@@ -77,7 +84,7 @@ class OAuthHandler(BaseHandler):
             oauthkeys.CONSUMER_KEY,
             oauthkeys.CONSUMER_SECRET,
             oauthkeys.APPLICATION_ID,
-            'http://delicious-export.appspot.com/oauth-callback')
+            CALLBACK_URL)
 
     def _handle_xml_export(self, oauthapp):
         url = 'http://api.del.icio.us/v2/posts/all'
@@ -102,6 +109,37 @@ class OAuthHandler(BaseHandler):
             
         bookmarks = parse_bookmarks_xml(result.content)
         self._output_export_form(bookmarks)
+
+class RequestAuthorizationHandler(OAuthHandler):
+    def get(self):
+        oauthapp = self._create_oauthapp()
+        
+        request_token = oauthapp.get_request_token(CALLBACK_URL)
+        stored_token = StoredToken(
+            token_key=request_token.key, token=request_token.to_string())
+        stored_token.put()
+        
+        self.redirect(oauthapp.get_authorization_url(request_token))
+
+class OAuthCallbackHandler(OAuthHandler):
+    def get(self):
+        oauthapp = self._create_oauthapp()
+        
+        stored_tokens = db.GqlQuery(
+            'SELECT * FROM StoredToken WHERE token_key = :1',
+            self.request.get('oauth_token')).fetch(2)
+        if len(stored_tokens) != 1:
+            self.error(400)
+            return
+        stored_token = stored_tokens[0]
+        request_token = yahoo.oauth.RequestToken.from_string(stored_token.token)
+
+        verifier = self.request.get('oauth_verifier')
+        access_token = oauthapp.get_access_token(request_token, verifier)
+        logging.debug('access_token: %s' % access_token.to_string())
+        oauthapp.token = access_token
+        
+        self._handle_xml_export(oauthapp)
 
 class BasicAuthUploadHandler(BaseHandler):
     def post(self):
@@ -160,6 +198,8 @@ class FaviconHandler(webapp.RequestHandler):
 
 def main():
     application = webapp.WSGIApplication([
+            ('/request-authorization', RequestAuthorizationHandler),
+            ('/oauth-callback', OAuthCallbackHandler),
             ('/debug-token', DebugTokenHandler),
             ('/basic-auth', BasicAuthUploadHandler),            
             ('/favicon.ico', FaviconHandler),
