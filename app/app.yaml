@@ -1,5 +1,5 @@
 application: delicious-export
-version: 2
+version: 3
 runtime: python
 api_version: 1
 
@@ -11,6 +11,14 @@ handlers:
 - url: /index.html
   static_files: static/index.html
   upload: static/index.html
+
+- url: /json.html
+  static_files: static/json.html
+  upload: static/json.html
+
+- url: /main.js
+  static_files: static/main.js
+  upload: static/main.js
 
 - url: .*
   script: main.py

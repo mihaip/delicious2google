@@ -1,0 +1,32 @@
+<!DOCTYPE html> 
+<html> 
+<head> 
+	<meta http-equiv="content-type" content="text/html; charset=utf-8"> 
+	<title>del.icio.us to Google Bookmarks (JSON version)</title> 
+	<script type="text/javascript" src="/main.js"></script> 
+	<script type="text/javascript"> 
+	  function runImport() {
+	    var username = document.getElementById('username').value;
+      var jsonUrl = 'http://del.icio.us/feeds/json/' + username + 
+                    '?raw&callback=jsonCallback&count=100';
+      var scriptNode = document.createElement('script');
+      scriptNode.setAttribute('type', 'text/javascript');
+      scriptNode.setAttribute('src', jsonUrl);
+      document.getElementsByTagName('head')[0].appendChild(scriptNode);
+	  }
+	</script> 
+</head> 
+<body> 
+ 
+<form onsubmit="runImport(); return false;"> 
+  <label>del.icio.us username: <input type="text" id="username"></label> 
+ 
+  <input type="submit" value="Import"> 
+</form> 
+ 
+<form id="upload-form" action="https://www.google.com/bookmarks/mark?op=upload" method="POST"> 
+  <input type="hidden" name="" id="data"> 
+</form> 
+ 
+</body> 
+</html> 
