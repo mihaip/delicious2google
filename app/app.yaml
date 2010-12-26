@@ -1,0 +1,19 @@
+application: delicious-export
+version: 2
+runtime: python
+api_version: 1
+
+handlers:
+- url: /
+  static_files: static/index.html
+  upload: static/index.html
+
+- url: /index.html
+  static_files: static/index.html
+  upload: static/index.html
+
+- url: .*
+  script: main.py
+
+builtins:
+- appstats: on

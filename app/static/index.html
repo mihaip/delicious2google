@@ -1,0 +1,93 @@
+<!DOCTYPE html> 
+<html> 
+<head> 
+	<meta http-equiv="content-type" content="text/html; charset=utf-8"> 
+	<title>del.icio.us to Google Bookmarks</title> 
+	<style type="text/css"> 
+    body {
+      font-family: Helvetica, sans-serif;
+    }
+    
+    #v1 form {
+      float: left;
+    }
+    
+    #v1 label {
+      display: block;
+      padding: 0.2em;
+      text-align: right;
+    }	
+    
+    #submit {
+      text-align: right;
+    }
+    
+    table {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    td {
+      vertical-align: top;
+      width: 50%;
+      max-width: 400px;
+      padding: 10px;
+    }
+    
+    #v2 {
+      border-right: solid 1px #ccc;
+    }
+    
+    #v2 form {
+      text-align: center;
+    }
+	</style> 
+</head> 
+<body> 
+  <h1>Delicious to Google Bookmarks</h1> 
+  
+  <p>This simple tool helps you export your Delicious bookmarks to
+  <a href="https://www.google.com/bookmarks">Google Bookmarks</a>. To use it,
+  you'll need to be already signed into the Google Account that you wish to
+  import your bookmarks into.</p> 
+  
+  <table> 
+    <tr> 
+      <td id="v2"> 
+        <h2>Yahoo! ID Account Users</h2>      
+        
+        <p>If you've merged your Delicious Account with your Yahoo! ID, the
+        import process uses <a href="http://oauth.net">OAuth</a> (so you don't
+        have to hand over your username and password). Just press the button
+        below and authorize the exporter.</p> 
+        
+        <form method="GET" action="/request-authorization"> 
+          <input type="submit" value="Export to Google Bookmarks" id="submit"> 
+        </form> 
+      </td> 
+      <td id="v1"> 
+        <h2>Delicious Account Users</h2> 
+        
+        <p>If you sign in to Delicious with a Delicious account, you'll need to
+          use the v1 API, which means you have to enter your credentials below.
+          I promise not to do anything evil with your username and password. 
+          <a href="import.py.txt">Here</a> is the source of the script that gets
+          run on the server.
+        </p> 
+      
+        <form method="POST" action="/v1"> 
+          <label>del.icio.us username: <input type="text" name="username"></label> 
+          <label>password: <input type="password" name="password" autocomplete="off"></label> 
+          <div id="submit"> 
+            <input type="submit" value="Export to Google Bookmarks" id="submit"> 
+          </div> 
+        </form> 
+      
+      </td> 
+    </tr> 
+  </table> 
+  
+  <p>This tool was created by <a href="http://persistent.info/">Mihai Parparita</a>, see the footer of <a href="http://persistent.info/">persistent.info</a> for contact information.</p> 
+ 
+</body> 
+</html> 
