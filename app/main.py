@@ -1,5 +1,113 @@
+import base64
+import cgi
+import logging
+
+from django.utils import simplejson as json
+from google.appengine.api import urlfetch
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
+
+from bookmarks import parse_bookmarks_xml
+
+class BaseHandler(webapp.RequestHandler):
+    def _handle_error(self, url_fetch_result):
+        def debug(str):
+            self.response.out.write(str + '\n')
+            logging.debug(str)
+      
+        self.response.set_status(500)
+        self.response.headers["Content-Type"] = "text/html"
+      
+        debug('<h1>Received an error from the Delicious API</h1>')
+        debug('<b>Status code:</b> %d<br>' %
+            url_fetch_result.status_code)
+        debug('<b>Headers:</b><ul>')
+        for header, value in url_fetch_result.headers.items():
+            debug('<li><b>%s:</b> %s</li>' %
+                (cgi.escape(header), cgi.escape(value)))
+        debug('</ul>')
+        debug('<b>Body:</b> <pre>%s</pre>' %
+            cgi.escape(url_fetch_result.content))
+
+    def _output_export_form(self, bookmarks):
+        self.response.headers['Content-Type'] = 'text/html'
+        
+        out = self.response.out
+        
+        out.write('<script type="text/javascript" src="/main.js"></script>')
+        out.write('''
+              <h1>Uploading...</h1>
+              <form id="upload-form"
+                  action="https://www.google.com/bookmarks/mark?op=upload"
+                  method="POST"
+                  accept-charset="utf-8">
+                <input type="hidden" name="" id="data">
+              </form>
+              ''')
+              
+        out.write('<script type="text/javascript">jsonCallback(')
+    
+        # Mimic the "raw" JSON output produced by the Delicious PAI    
+        bookmarks_json = []
+        for bookmark in bookmarks:
+            tags = list(bookmark.tags)
+            if bookmark.is_private:
+                tags.append('delicious-private')
+            tags.append('delicious-export')        
+            bookmark_json = {
+              'u': bookmark.href,
+              'd': bookmark.description,
+              'e': bookmark.extended,
+              't': tags
+            }
+            bookmarks_json.append(bookmark_json)
+    
+        out.write(json.dumps(bookmarks_json, indent=2, ensure_ascii=True))
+        
+        out.write(')</script>')    
+
+class BasicAuthUploadHandler(BaseHandler):
+    def post(self):
+        username = self.request.get('username')
+        password = self.request.get('password')
+        
+        logging.debug('Exporting bookmarks using Basic Auth for %s' % username)
+        
+        encoded_credentials = base64.encodestring(
+            '%s:%s' % (username, password))[:-1]
+        
+        # The v1 API seems to be more prone to taking longer to respond (or is
+        # it that v1 users tend to have more bookmarks?), so to avoid hitting
+        # the 10 second HTTP urlfetch timeout limit, we chunk the data that is
+        # requested
+        chunk_start = 0
+        chunk_size = 500
+        bookmarks = []
+
+        while True:
+          logging.debug('  Fetching chunk from %d' % chunk_start)
+          result = urlfetch.fetch(
+              url='https://api.del.icio.us/v1/posts/all?results=%d&start=%d' %
+                  (chunk_size, chunk_start),
+              method=urlfetch.GET,
+              deadline=60,
+              headers={'Authorization': 'Basic %s' % encoded_credentials})
+          
+          if result.status_code != 200:
+              self._handle_error(result)
+              return
+          
+          chunk_bookmarks = parse_bookmarks_xml(result.content)
+          bookmarks.extend(chunk_bookmarks)
+
+          logging.debug('  Got %d bookmarks in chunk' % len(chunk_bookmarks))
+          
+          if len(chunk_bookmarks) != chunk_size:
+              break
+          
+          chunk_start += chunk_size
+
+        self._output_export_form(bookmarks)
 
 class FaviconHandler(webapp.RequestHandler):
     def get(self):
@@ -7,6 +115,7 @@ class FaviconHandler(webapp.RequestHandler):
 
 def main():
     application = webapp.WSGIApplication([
+            ('/basic-auth', BasicAuthUploadHandler),            
             ('/favicon.ico', FaviconHandler),
         ],
         debug=True)
