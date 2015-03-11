@@ -1,4 +1,4 @@
-application: delicious-export
+application: delicious-export-hrd
 version: 3
 runtime: python
 api_version: 1
@@ -11,7 +11,7 @@ handlers:
 - url: /(.*\.(html|js))
   static_files: static/\1
   upload: static/(.*\.(html|js))
-  
+
 - url: .*
   script: main.py
 
