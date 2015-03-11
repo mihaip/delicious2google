@@ -1,5 +1,8 @@
-Introduction
-============
+# Obsolescene Warning
+
+This is a tool from 2010. Delicious has since [changed owners](http://dealbook.nytimes.com/2011/04/27/youtube-founders-pick-up-delicious-from-yahoo) ([twice](http://dealbook.nytimes.com/2014/05/08/delicious-social-site-is-sold-by-youtube-founders/)). This tool is most likely not compatible with [the current Delicious API](https://github.com/SciDevs/delicious-api).
+
+## Introduction
 
 delicious2google is a simple Python Google App Engine-based tool to export [Delicious](http://www.delicious.com/) bookmarks to [Google Bookmarks](http://www.google.com/bookmarks). It uses the V2 Delicious API (with OAuth) for accounts that have been merged with Delicious accounts, or the V1 API (Basic Auth over HTTPS) for accounts that have not been merged.
 
